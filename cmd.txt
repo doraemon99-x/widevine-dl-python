@@ -1,0 +1,40 @@
+sudo apt update
+sudo apt install yt-dlp
+
+chmod +x mp4decrypt/mp4decrypt_linux
+atau
+chmod -R +x mp4decrypt
+
+
+sudo apt update
+sudo apt install rclone -y
+
+rclone config
+Lalu:
+
+n → new remote
+
+name → gdrive
+storage → drive
+client id → enter
+client secret → enter
+scope → pilih 1
+root folder id → enter\
+service account → n
+Edit advanced config → n
+Use auto config? → pilih n (PENTING!)
+
+===
+rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlIn0"
+
+di pc real kita
+===
+
+rclone copy output/ttb1.mp4 gdrive:/WidevineDownloads/ -P
+atau
+rclone copy output gdrive:/WidevineDownloads/ -P
+
+Kalau mau setelah upload file lokal langsung terhapus:
+rclone move output/ttb1.mp4 gdrive:/WidevineDownloads/ -P
+
+
