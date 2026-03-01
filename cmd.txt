@@ -33,6 +33,8 @@ di pc real kita
 rclone copy output/ttb1.mp4 gdrive:/WidevineDownloads/ -P
 atau
 rclone copy output gdrive:/WidevineDownloads/ -P
+atau
+rclone move output gdrive:/WidevineDownloads/ -P
 
 Kalau mau setelah upload file lokal langsung terhapus:
 rclone move output/ttb1.mp4 gdrive:/WidevineDownloads/ -P
@@ -40,3 +42,5 @@ rclone move output/ttb1.mp4 gdrive:/WidevineDownloads/ -P
 rm -rf output/*
 
 rm -rf cache/* output/*
+
+WidevineDecryptor: Found key: 93804fc09cde012a2b26ddbd2e30ae4f (KID=f101e4678766af8264fe3adf60758569)

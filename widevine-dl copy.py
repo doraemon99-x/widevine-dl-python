@@ -58,8 +58,13 @@ def download_drm_content(mpd_url):
 
     divider()
 
-    VIDEO_ID = input("ENTER VIDEO_ID (Press Enter for Best): ").strip() or "bv"
-    AUDIO_ID = input("ENTER AUDIO_ID (Press Enter for Best): ").strip() or "ba"
+    VIDEO_ID = input("ENTER VIDEO_ID (Press Enter for Best): ").strip()
+    if VIDEO_ID == "":
+        VIDEO_ID = "bv"
+
+    AUDIO_ID = input("ENTER AUDIO_ID (Press Enter for Best): ").strip()
+    if AUDIO_ID == "":
+        AUDIO_ID = "ba"
 
     divider()
     print("Downloading Encrypted Video from CDN..")
@@ -95,7 +100,7 @@ def download_drm_content(mpd_url):
 def decrypt_content():
     extract_key(KEY_PROMPT)
     divider()
-    print("Decrypting WideVine DRM..")
+    print("Decrypting WideVine DRM.. (Takes some time)")
     osinfo()
 
     if PLATFORM == "Windows":
@@ -107,8 +112,16 @@ def decrypt_content():
     else:
         mp4decrypt_path = "mp4decrypt"
 
+    if not os.path.exists(mp4decrypt_path):
+        print("ERROR: mp4decrypt not found!")
+        return
+
     video_files = glob.glob(os.path.join(TEMPORARY_PATH, "encrypted_video.*"))
     audio_files = glob.glob(os.path.join(TEMPORARY_PATH, "encrypted_audio.*"))
+
+    if not video_files or not audio_files:
+        print("ERROR: Encrypted files not found!")
+        return
 
     video_in = video_files[0]
     audio_in = audio_files[0]
@@ -116,10 +129,21 @@ def decrypt_content():
     video_out = os.path.join(TEMPORARY_PATH, "decrypted_video.mp4")
     audio_out = os.path.join(TEMPORARY_PATH, "decrypted_audio.m4a")
 
-    subprocess.run([mp4decrypt_path, video_in, video_out, "--key", keys], check=True)
-    subprocess.run([mp4decrypt_path, audio_in, audio_out, "--key", keys], check=True)
+    try:
+        subprocess.run(
+            [mp4decrypt_path, video_in, video_out, "--key", keys],
+            check=True
+        )
 
-    print("Decryption Complete!")
+        subprocess.run(
+            [mp4decrypt_path, audio_in, audio_out, "--key", keys],
+            check=True
+        )
+
+        print("Decryption Complete!")
+
+    except subprocess.CalledProcessError:
+        print("ERROR: Decryption failed!")
 
 # ==========================
 # Detect Audio Offset
@@ -138,70 +162,47 @@ def get_audio_offset(audio_path):
     return 0.0
 
 # ==========================
-# Merge with Subtitle
+# Merge (Correct DASH Handling)
 # ==========================
 
 def merge_content():
     divider()
     FILENAME = input("Enter File Name (with extension): \n> ").strip()
     divider()
+    print(f"Merging Files with Correct DASH Offset for {FILENAME}..")
+    time.sleep(1)
 
     video_path = os.path.join(TEMPORARY_PATH, "decrypted_video.mp4")
     audio_path = os.path.join(TEMPORARY_PATH, "decrypted_audio.m4a")
     output_file = os.path.join(OUTPUT_PATH, FILENAME)
 
+    if not os.path.exists(video_path) or not os.path.exists(audio_path):
+        print("ERROR: Decrypted files not found!")
+        return
+
     offset = get_audio_offset(audio_path)
-    print(f"Detected audio offset: {offset}")
+    print(f"Detected audio start offset: {offset} seconds")
 
-    add_sub = input("Add external subtitle? (y/n): ").strip().lower()
-
-    cmd = [
+    subprocess.run([
         "ffmpeg",
         "-y",
         "-i", video_path,
         "-itsoffset", str(offset),
         "-i", audio_path,
-    ]
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c", "copy",
+        output_file
+    ])
 
-    if add_sub == "y":
-        sub_path = input("Enter subtitle file path: ").strip()
-        lang = input("Enter language code (ex: ind, eng): ").strip() or "und"
-        default_flag = input("Set as default? (y/n): ").strip().lower()
-
-        cmd.extend(["-i", sub_path])
-
-        cmd.extend([
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-map", "2:0",
-            "-c:v", "copy",
-            "-c:a", "copy",
-            "-c:s", "mov_text",
-            "-metadata:s:s:0", f"language={lang}"
-        ])
-
-        if default_flag == "y":
-            cmd.extend(["-disposition:s:0", "default"])
-
-    else:
-        cmd.extend([
-            "-map", "0:v:0",
-            "-map", "1:a:0",
-            "-c", "copy"
-        ])
-
-    cmd.append(output_file)
-
-    subprocess.run(cmd)
-
-    print("Merge Complete!")
+    print("Merge Complete (DASH Offset Preserved)!")
 
 # ==========================
 # MAIN
 # ==========================
 
 divider()
-print("**** Widevine-DL Ultimate Version ****")
+print("**** Widevine-DL (DASH Correct Version) ****")
 divider()
 
 MPD_URL = input("Enter MPD URL: \n> ").strip()
@@ -212,9 +213,10 @@ decrypt_content()
 merge_content()
 
 divider()
-print("Process Finished.")
+print("Process Finished. Final Video File is saved in /output directory.")
 divider()
 
-delete_choice = input("Delete cache files? (y/n): ").strip().lower()
+delete_choice = input("Delete cache files? (y/n)\ny) Yes (default)\nn) No\ny/n> ").strip().lower()
+
 if delete_choice != "n":
     empty_folder(TEMPORARY_PATH)
